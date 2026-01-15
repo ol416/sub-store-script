@@ -10,6 +10,7 @@
 
 ### 核心脚本
 
+- **`clash_rule_inserter.js`** - 插入 Clash 自定义规则，支持 rule-providers 和 rules 配置
 - **`insert_custom_node_group.js`** - 从多个订阅源获取节点并添加到指定策略组顶部
 - **`copy_new_groups.js`** - 复制策略组中的节点创建新组
 - **`insert_new_proxies.js`** - 将策略组名称插入到其他策略组中
