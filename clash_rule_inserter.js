@@ -8,14 +8,14 @@
 
 // 1. rule-providers 文件名列表 (字段固定 'rule-providers')
 const PROVIDER_CONFIGS = [
-    'rule-providers'
+    'rule-providers',
     // 可添加更多文件名，例如：
     // 'another-rule-providers'
 ];
 
-// 2. rules 文件名列表 (字段固定 'rules')
+// 2. 自定义规则配置文件名列表 (字段固定 'rules', 用于提供自定义 RULE-SET 值 {providerKey: 'ruleValue'})
 const RULES_CONFIGS = [
-    // 'custom-rules'  // 可添加文件名，从中获取 rules 并插入
+    'ruleValue'  // 可添加文件名，从中获取 {providerKey: 'ruleValue'} 对象
 ];
 
 // 3. 策略占位符 (用于 RULE-SET 规则)
@@ -30,8 +30,9 @@ const POLICY_PLACEHOLDER = 'REPLACE_ME';
  * @param {object} yaml - 解析后的 YAML 对象
  * @param {object} providersMap - rule-providers 数据对象
  * @param {string} policyPlaceholder - 策略占位符
+ * @param {object} customRulesMap - 自定义规则映射 {providerKey: 'ruleValue'}
  */
-function insertCustomRules(yaml, providersMap, policyPlaceholder) {
+function insertCustomRules(yaml, providersMap, policyPlaceholder, customRulesMap = {}) {
     console.log('insertCustomRules 开始，yaml rule-providers keys:', Object.keys(yaml['rule-providers'] || {}));
     if (providersMap && typeof providersMap === 'object') {
         // 初始化节点防止报错
@@ -59,8 +60,9 @@ function insertCustomRules(yaml, providersMap, policyPlaceholder) {
             if (isRuleExisted) {
                 console.log(`[Skip] rules 中已存在对 ${key} 的引用`);
             } else {
-                // 只有不存在时才加入待插入队列
-                newRules.push(`RULE-SET,${key},${policyPlaceholder}`);
+                // 只有不存在时才加入待插入队列，使用自定义规则或默认占位符
+                const ruleValue = customRulesMap[key] || policyPlaceholder;
+                newRules.push(`RULE-SET,${key},${ruleValue}`);
             }
         });
 
@@ -106,6 +108,34 @@ if (typeof $content === 'undefined' && (typeof $files === 'undefined' || !$files
 }
 const yaml = ProxyUtils.yaml.safeLoad($content ?? $files[0]);
 
+// 获取自定义规则映射
+let customRulesMap = {};
+for (const fileName of RULES_CONFIGS) {
+    console.log(`⏳ 正在获取自定义规则文件: ${fileName}...`);
+    let rulesString = await produceArtifact({
+        type: 'file',
+        name: fileName,
+    });
+    const additionalRules = ProxyUtils.yaml.safeLoad(rulesString);
+    const rulesArray = additionalRules['rules'] || additionalRules;
+    if (Array.isArray(rulesArray)) {
+        // 从 rules 数组中解析 RULE-SET,key,value 格式
+        rulesArray.forEach(rule => {
+            if (typeof rule === 'string' && rule.startsWith('RULE-SET,')) {
+                const parts = rule.split(',');
+                if (parts.length >= 3) {
+                    const key = parts[1];
+                    const value = parts[2];
+                    customRulesMap[key] = value;
+                }
+            }
+        });
+        console.log(`   - 从 ${rulesArray.length} 个规则中解析到 ${Object.keys(customRulesMap).length} 个自定义 RULE-SET 映射。`);
+    } else {
+        console.log(`   - 警告：文件 ${fileName} 的格式不是预期的数组，已跳过。`);
+    }
+}
+
 // 处理 rule-providers
 for (const fileName of PROVIDER_CONFIGS) {
     console.log(`⏳ 正在获取 rule-providers 文件: ${fileName}...`);
@@ -121,29 +151,13 @@ for (const fileName of PROVIDER_CONFIGS) {
     if (providersMap && typeof providersMap === 'object') {
         console.log(`   - 获取到 ${Object.keys(providersMap).length} 个 rule-provider。`);
         // 调用封装函数
-        insertCustomRules(yaml, providersMap, POLICY_PLACEHOLDER);
+        insertCustomRules(yaml, providersMap, POLICY_PLACEHOLDER, customRulesMap);
     } else {
         console.log(`   - 警告：文件 ${fileName} 的格式不是预期的对象，已跳过。`);
     }
 }
 
-// 处理 rules
-for (const fileName of RULES_CONFIGS) {
-    console.log(`⏳ 正在获取 rules 文件: ${fileName}...`);
-    let rulesString = await produceArtifact({
-        type: 'file',
-        name: fileName,
-    });
-    const additionalRules = ProxyUtils.yaml.safeLoad(rulesString);
-    const rulesArray = additionalRules['rules'] || additionalRules;
-    if (Array.isArray(rulesArray)) {
-        console.log(`   - 获取到 ${rulesArray.length} 个 rule。`);
-        // 调用封装函数
-        insertCustomRulesFromArray(yaml, rulesArray);
-    } else {
-        console.log(`   - 警告：文件 ${fileName} 的格式不是预期的数组，已跳过。`);
-    }
-}
+
 
 // 输出结果
 $content = ProxyUtils.yaml.dump(yaml);
