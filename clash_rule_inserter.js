@@ -9,13 +9,14 @@
 // 1. rule-providers 文件名列表 (字段固定 'rule-providers')
 const PROVIDER_CONFIGS = [
     'rule-providers',
+    'Rule-for-OCD'
     // 可添加更多文件名，例如：
     // 'another-rule-providers'
 ];
 
 // 2. 自定义规则配置文件名列表 (字段固定 'rules', 用于提供自定义 RULE-SET 值 {providerKey: 'ruleValue'})
 const RULES_CONFIGS = [
-    'ruleValue'  // 可添加文件名，从中获取 {providerKey: 'ruleValue'} 对象
+    'Rule-for-OCD'  // 可添加文件名，从中获取 {providerKey: 'ruleValue'} 对象
 ];
 
 // 3. 策略占位符 (用于 RULE-SET 规则)
@@ -68,7 +69,7 @@ function insertCustomRules(yaml, providersMap, policyPlaceholder, customRulesMap
 
         // 将不重复的规则插入到顶部
         if (newRules.length > 0) {
-            yaml.rules.unshift(...newRules);
+            yaml.rules.push(...newRules);
         }
     }
     console.log('insertCustomRules 结束，yaml rule-providers keys:', Object.keys(yaml['rule-providers'] || {}));
@@ -96,7 +97,7 @@ function insertCustomRulesFromArray(yaml, rulesArray) {
 
         // 插入到顶部
         if (newRules.length > 0) {
-            yaml.rules.unshift(...newRules);
+            yaml.rules.push(...newRules);
         }
     }
 }
