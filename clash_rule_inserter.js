@@ -67,12 +67,21 @@ function insertCustomRules(yaml, providersMap, policyPlaceholder, customRulesMap
             }
         });
 
-        // 将不重复的规则插入到顶部
+        // --- 核心修改：寻找插入位置 ---
         if (newRules.length > 0) {
-            yaml.rules.push(...newRules);
+            let targetIndex = yaml.rules.findIndex(rule => 
+                typeof rule === 'string' && (rule.includes('GEOIP,CN') || rule.startsWith('MATCH'))
+            );
+            
+            if (targetIndex !== -1) {
+                yaml.rules.splice(targetIndex, 0, ...newRules); // 在匹配到的位置前插入
+                console.log(`✅ 已在索引 ${targetIndex} (MATCH/GEOIP) 之前插入新规则`);
+            } else {
+                yaml.rules.push(...newRules); // 没找到则放到最后
+            }
         }
     }
-    console.log('insertCustomRules 结束，yaml rule-providers keys:', Object.keys(yaml['rule-providers'] || {}));
+    console.log('insertCustomRules 结束');
 }
 
 /**
@@ -95,9 +104,18 @@ function insertCustomRulesFromArray(yaml, rulesArray) {
             }
         });
 
-        // 插入到顶部
+        // --- 核心修改：寻找插入位置 ---
         if (newRules.length > 0) {
-            yaml.rules.push(...newRules);
+            let targetIndex = yaml.rules.findIndex(rule => 
+                typeof rule === 'string' && (rule.includes('GEOIP,CN') || rule.startsWith('MATCH'))
+            );
+            
+            if (targetIndex !== -1) {
+                yaml.rules.splice(targetIndex, 0, ...newRules);
+                console.log(`✅ 已在索引 ${targetIndex} (MATCH/GEOIP) 之前插入自定义 rules`);
+            } else {
+                yaml.rules.push(...newRules);
+            }
         }
     }
 }
