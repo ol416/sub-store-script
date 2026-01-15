@@ -69,15 +69,18 @@ function insertCustomRules(yaml, providersMap, policyPlaceholder, customRulesMap
 
         // --- 核心修改：寻找插入位置 ---
         if (newRules.length > 0) {
+            // 寻找分界点索引：优先匹配 GEOIP,CN，其次匹配 MATCH
             let targetIndex = yaml.rules.findIndex(rule => 
                 typeof rule === 'string' && (rule.includes('GEOIP,CN') || rule.startsWith('MATCH'))
             );
             
             if (targetIndex !== -1) {
-                yaml.rules.splice(targetIndex, 0, ...newRules); // 在匹配到的位置前插入
+                // 在分界点之前插入
+                yaml.rules.splice(targetIndex, 0, ...newRules);
                 console.log(`✅ 已在索引 ${targetIndex} (MATCH/GEOIP) 之前插入新规则`);
             } else {
-                yaml.rules.push(...newRules); // 没找到则放到最后
+                // 如果没找到分界点，则按你之前的逻辑 push 到底部
+                yaml.rules.push(...newRules);
             }
         }
     }
@@ -106,14 +109,17 @@ function insertCustomRulesFromArray(yaml, rulesArray) {
 
         // --- 核心修改：寻找插入位置 ---
         if (newRules.length > 0) {
+            // 寻找分界点索引：优先匹配 GEOIP,CN，其次匹配 MATCH
             let targetIndex = yaml.rules.findIndex(rule => 
                 typeof rule === 'string' && (rule.includes('GEOIP,CN') || rule.startsWith('MATCH'))
             );
             
             if (targetIndex !== -1) {
+                // 在分界点之前插入
                 yaml.rules.splice(targetIndex, 0, ...newRules);
-                console.log(`✅ 已在索引 ${targetIndex} (MATCH/GEOIP) 之前插入自定义 rules`);
+                console.log(`✅ 已在索引 ${targetIndex} (MATCH/GEOIP) 之前插入新规则`);
             } else {
+                // 如果没找到分界点，则按你之前的逻辑 push 到底部
                 yaml.rules.push(...newRules);
             }
         }
@@ -138,14 +144,15 @@ for (const fileName of RULES_CONFIGS) {
     const additionalRules = ProxyUtils.yaml.safeLoad(rulesString);
     const rulesArray = additionalRules['rules'] || additionalRules;
     if (Array.isArray(rulesArray)) {
-        // 从 rules 数组中解析 RULE-SET,key,value 格式
+        // 从 rules 数组中解析 RULE-SET,key,value 格式 (保留 no-resolve 等后续参数)
         rulesArray.forEach(rule => {
             if (typeof rule === 'string' && rule.startsWith('RULE-SET,')) {
                 const parts = rule.split(',');
                 if (parts.length >= 3) {
                     const key = parts[1];
-                    const value = parts[2];
-                    customRulesMap[key] = value;
+                    // 修改点：合并第3个字段及其后的所有内容，以保留 no-resolve
+                    const valueWithParams = parts.slice(2).join(',');
+                    customRulesMap[key] = valueWithParams;
                 }
             }
         });
